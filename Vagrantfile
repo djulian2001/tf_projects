@@ -1,3 +1,9 @@
+
+# setup sublime for working with terraform
+# https://packagecontrol.io/installation#st3  # install the package control
+# edit the preferences configs to NOT ignore package control
+# using package control installed "terraform" package
+
 Vagrant.configure("2") do |config|
   config.vm.box = "centos/7"
   config.vm.provider "virtualbox" do |vb|
