@@ -192,7 +192,19 @@ resource "aws_network_acl" "nacl-testbox" {
     cidr_block = var.vpc_cidr
     from_port = 0
     to_port = 0
+    # from_port = 1024
+    # to_port = 65535
   }
+
+  # egress {
+  #   rule_no = 100
+  #   protocol = "icmp"
+  #   action = "allow"
+  #   cidr_block = var.vpc_cidr
+  #   from_port = 1024
+  #   to_port = 65535
+  # }
+
 
 }
 
@@ -212,6 +224,22 @@ resource "aws_security_group" "sg-testbox" {
   name        = "sg_testbox"
   description = "the security group for the testbox"
   vpc_id      = aws_vpc.vpc-testbox.id
+}
+
+resource "aws_security_group" "sg-jumpbox-ssh-test" {
+  name        = "sg_jumpbox_ssh_test"
+  description = "allow ssh from my public ip for testing purposes"
+  vpc_id      = aws_vpc.vpc-jumpbox.id
+}
+
+resource "aws_security_group_rule" "sg-jumpbox-ingress-ssh-rule-test" {
+  security_group_id = aws_security_group.sg-jumpbox-ssh-test.id
+  type        = "ingress"
+  from_port   = 22
+  to_port     = 22
+  protocol    = "tcp"
+  cidr_blocks = ["${join("/",[var.my_public_ip,"32"])}"]
+  description = "allow ssh connections from my home networks public ip"
 }
 
 # sg rules
@@ -269,3 +297,25 @@ resource "aws_security_group_rule" "sg-testbox-ingress-icmp-rule" {
 # compute resources
 #########################################################################################
 
+resource "aws_key_pair" "ec2-rsa-key" {
+    key_name    = "vagrant_local_dev"
+    public_key  = var.dev_rsa_key
+}
+
+resource "aws_instance" "ec2-testbox" {
+  ami             = "${lookup(var.amazon_linux_amis, var.region)}"
+  instance_type   = "t2.micro"
+  subnet_id       = aws_subnet.subnet-testbox-a.id
+  vpc_security_group_ids = [aws_security_group.sg-testbox.id]
+  key_name        = aws_key_pair.ec2-rsa-key.id
+}
+
+resource "aws_instance" "ec2-jumpbox" {
+  ami             = "${lookup(var.amazon_linux_amis, var.region)}"
+  instance_type   = "t2.micro"
+  subnet_id       = aws_subnet.subnet-jumpbox-a.id
+  vpc_security_group_ids = [aws_security_group.sg-jumpbox-ssh-test.id,aws_security_group.sg-jumpbox.id]
+  key_name        = aws_key_pair.ec2-rsa-key.id
+}
+
+# ssh to the above host is working, but ping to the test box is not working.
