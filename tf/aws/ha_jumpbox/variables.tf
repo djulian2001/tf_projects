@@ -15,7 +15,7 @@ variable "vpc_cidr" {
 variable "vpc_cidr_testbox" {
   type = "string"
   description = "The vpc cidr block for the test box we will access from the jumpbox"
-  default = "10.55.1.0/24"
+  default = "10.1.0.0/16"
 }
 
 # setting as env variable
@@ -35,6 +35,16 @@ variable "subnet_public_jumpbox" {
     us-west-2b = "10.0.2.0/24"
   }
 }
+
+variable "subnet_private_testbox" {
+  type = "map"
+  description = "the private testbox subnets"
+  default = {
+    us-west-2a = "10.1.1.0/24"
+    us-west-2b = "10.1.2.0/24"
+  }
+}
+
 
 variable "amazon_linux_amis" {
   type = "map"

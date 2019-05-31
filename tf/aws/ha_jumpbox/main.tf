@@ -36,7 +36,7 @@ resource "aws_subnet" "subnet-jumpbox-b" {
 
 resource "aws_subnet" "subnet-testbox-a" {
   vpc_id = aws_vpc.vpc-testbox.id
-  cidr_block = var.vpc_cidr_testbox
+  cidr_block = var.subnet_private_testbox["us-west-2a"]
   availability_zone = "us-west-2a"
 }
 
@@ -70,7 +70,7 @@ resource "aws_route_table" "rt-main-jumpbox" {
   }
 
   route {
-    cidr_block = var.vpc_cidr_testbox
+    cidr_block = var.subnet_private_testbox["us-west-2a"]
     vpc_peering_connection_id = aws_vpc_peering_connection.jumpbox-to-testbox.id
   }
 
@@ -136,10 +136,23 @@ resource "aws_network_acl" "nacl-jumpbox" {
     icmp_type = 0
     icmp_code = 0
     action = "allow"
-    cidr_block = var.vpc_cidr_testbox
+    cidr_block = var.subnet_private_testbox["us-west-2a"]
     from_port = 0
     to_port = 0
   }
+
+  # icmp ALL
+  # ingress {
+  #   rule_no = 300
+  #   protocol = "icmp"
+  #   icmp_type = -1
+  #   icmp_code = -1
+  #   action = "allow"
+  #   cidr_block = var.subnet_private_testbox["us-west-2a"]
+  #   from_port = -1
+  #   to_port = -1
+  # }
+
 
   # ssh response
   egress {
@@ -156,12 +169,25 @@ resource "aws_network_acl" "nacl-jumpbox" {
     rule_no = 300
     protocol = "icmp"
     icmp_type = 8
-    icmp_code = 8
+    icmp_code = 0
     action = "allow"
-    cidr_block = var.vpc_cidr_testbox
+    cidr_block = var.subnet_private_testbox["us-west-2a"]
     from_port = 0
     to_port = 0
   }
+
+  # icmp ALL
+  # egress {
+  #   rule_no = 300
+  #   protocol = "icmp"
+  #   icmp_type = -1
+  #   icmp_code = -1
+  #   action = "allow"
+  #   cidr_block = var.subnet_private_testbox["us-west-2a"]
+  #   from_port = -1
+  #   to_port = -1
+  # }
+
 
 }
 
@@ -176,7 +202,7 @@ resource "aws_network_acl" "nacl-testbox" {
     rule_no = 300
     protocol = "icmp"
     icmp_type = 8
-    icmp_code = 8
+    icmp_code = 0
     action = "allow"
     cidr_block = var.vpc_cidr
     from_port = 0
@@ -192,19 +218,31 @@ resource "aws_network_acl" "nacl-testbox" {
     cidr_block = var.vpc_cidr
     from_port = 0
     to_port = 0
-    # from_port = 1024
-    # to_port = 65535
   }
 
-  # egress {
-  #   rule_no = 100
+  # icmp ALL
+  # ingress {
+  #   rule_no = 300
   #   protocol = "icmp"
+  #   icmp_type = -1
+  #   icmp_code = -1
   #   action = "allow"
   #   cidr_block = var.vpc_cidr
-  #   from_port = 1024
-  #   to_port = 65535
+  #   from_port = -1
+  #   to_port = -1
   # }
 
+  # icmp ALL
+  # egress {
+  #   rule_no = 300
+  #   protocol = "icmp"
+  #   icmp_type = -1
+  #   icmp_code = -1
+  #   action = "allow"
+  #   cidr_block = var.vpc_cidr
+  #   from_port = -1
+  #   to_port = -1
+  # }
 
 }
 
@@ -273,11 +311,14 @@ resource "aws_security_group_rule" "sg-jumpbox-ingress-ssh-rule" {
   description = "allow ingress ssh connections"
 }
 
+# LOOK into the coding icmp... echo request
+#   from_port = icmp.type
+#   to_port = icmp.code
 resource "aws_security_group_rule" "sg-jumpbox-egress-icmp-rule" {
   security_group_id = aws_security_group.sg-jumpbox.id
   type        = "egress"
   from_port   = 8
-  to_port     = 8
+  to_port     = 0
   protocol    = "icmp"
   source_security_group_id = aws_security_group.sg-testbox.id
   description = "allow egress echo to the testbox"
@@ -287,11 +328,33 @@ resource "aws_security_group_rule" "sg-testbox-ingress-icmp-rule" {
   security_group_id = aws_security_group.sg-testbox.id
   type        = "ingress"
   from_port   = 8
-  to_port     = 8
+  to_port     = 0
   protocol    = "icmp"
   source_security_group_id = aws_security_group.sg-jumpbox.id
   description = "allow ingress echo from the jumpbox"
 }
+
+# this opens up ALL icmp
+# resource "aws_security_group_rule" "sg-jumpbox-egress-icmp-rule" {
+#   security_group_id = aws_security_group.sg-jumpbox.id
+#   type        = "egress"
+#   from_port   = -1
+#   to_port     = -1
+#   protocol    = "icmp"
+#   source_security_group_id = aws_security_group.sg-testbox.id
+#   description = "allow egress echo to the testbox"
+# }
+
+# resource "aws_security_group_rule" "sg-testbox-ingress-icmp-rule" {
+#   security_group_id = aws_security_group.sg-testbox.id
+#   type        = "ingress"
+#   from_port   = -1
+#   to_port     = -1
+#   protocol    = "icmp"
+#   source_security_group_id = aws_security_group.sg-jumpbox.id
+#   description = "allow ingress echo from the jumpbox"
+# }
+
 
 #########################################################################################
 # compute resources
@@ -318,4 +381,6 @@ resource "aws_instance" "ec2-jumpbox" {
   key_name        = aws_key_pair.ec2-rsa-key.id
 }
 
-# ssh to the above host is working, but ping to the test box is not working.
+
+
+
